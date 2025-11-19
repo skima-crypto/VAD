@@ -1,5 +1,6 @@
-// lib/supabase.ts
+import Constants from 'expo-constants';
 import { createClient } from '@supabase/supabase-js';
-import { API_URL, API_KEY } from 'react-native-dotenv';
 
-export const supabase = createClient(API_URL, API_KEY); // anon key
+const { SUPABASE_URL, SUPABASE_ANON_KEY } = Constants.expoConfig.extra;
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

@@ -1,5 +1,6 @@
-// lib/supabaseAdmin.ts
+import Constants from 'expo-constants';
 import { createClient } from '@supabase/supabase-js';
-import { API_URL, API_KEY } from 'react-native-dotenv';
 
-export const supabaseAdmin = createClient(API_URL, API_KEY); // service role key
+const { SUPABASE_URL, SUPABASE_ANON_KEY } = Constants.expoConfig.extra;
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

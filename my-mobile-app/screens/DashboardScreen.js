@@ -1,6 +1,6 @@
 // screens/DashboardScreen.js
 import React, { useEffect, useState, useCallback } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import { startSession, activateBoost, watchAndEarnComplete } from "../lib/miningApi";
 import { supabase } from "../lib/supabase";
 
@@ -22,20 +22,20 @@ export default function DashboardScreen() {
     })();
   }, []);
 
- const refreshStatus = useCallback(async (userId) => {
-  setLoading(true);
-  try {
-    const res = await fetch(`${FUNCTION_URL}/getStatus?user_id=${userId}`);
-    const data = await res.json();
-    setSession(data.session || null);
-    setProfile(data.profile || null);
-  } catch (err) {
-    console.error(err);
-  } finally {
-    setLoading(false);
-  }
-}, []);
-
+  // 🔄 Refresh session and profile
+  const refreshStatus = useCallback(async (userId) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${process.env.SUPABASE_MINING_FUNCTION_URL}/getStatus?user_id=${userId}`);
+      const data = await res.json();
+      setSession(data.session || null);
+      setProfile(data.profile || null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   // ⏱️ Countdown timer for active mining session
   useEffect(() => {
@@ -95,7 +95,7 @@ export default function DashboardScreen() {
     }
   };
 
-  // 🎯 Watch and earn complete (3 times/day)
+  // 🎯 Watch and earn (3x/day)
   const handleWatchAndEarn = async () => {
     if (!user) return Alert.alert("Not signed in");
     setLoading(true);
@@ -116,10 +116,13 @@ export default function DashboardScreen() {
 
   const miningRatePerHour = session ? session.base_rate * session.multiplier : 0;
   const currentBalance = profile ? profile.wallet_balance : 0;
+  const boostsUsed = profile?.boosts_used_today || 0;
+  const watchCount = profile?.ads_watched_today || 0; // make sure your Edge function returns this
 
   return (
     <View style={styles.container}>
       <Text style={styles.header}>VAD Mining</Text>
+
       <View style={styles.topRow}>
         <Text>Balance: {Number(currentBalance).toFixed(2)}</Text>
         <Text>Rate/hr: {miningRatePerHour}</Text>
@@ -131,21 +134,29 @@ export default function DashboardScreen() {
       </View>
 
       {!session ? (
-        <TouchableOpacity style={styles.startBtn} onPress={handleStart}>
-          <Text style={styles.btnText}>Start Mining</Text>
+        <TouchableOpacity style={styles.startBtn} onPress={handleStart} disabled={loading}>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Start Mining</Text>}
         </TouchableOpacity>
       ) : (
-        <TouchableOpacity style={styles.stopBtn} onPress={() => Alert.alert("Session active")}>
+        <TouchableOpacity style={styles.stopBtn} disabled>
           <Text style={styles.btnText}>Session Active</Text>
         </TouchableOpacity>
       )}
 
-      <TouchableOpacity style={styles.boostBtn} onPress={handleBoost}>
-        <Text style={styles.btnText}>Boost Earnings (Watch Ad)</Text>
+      <TouchableOpacity
+        style={styles.boostBtn}
+        onPress={handleBoost}
+        disabled={loading || boostsUsed >= 3}
+      >
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Boost Earnings ({boostsUsed}/3)</Text>}
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.watchBtn} onPress={handleWatchAndEarn}>
-        <Text style={styles.btnText}>Watch & Earn</Text>
+      <TouchableOpacity
+        style={styles.watchBtn}
+        onPress={handleWatchAndEarn}
+        disabled={loading || watchCount >= 3}
+      >
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Watch & Earn ({watchCount}/3)</Text>}
       </TouchableOpacity>
     </View>
   );

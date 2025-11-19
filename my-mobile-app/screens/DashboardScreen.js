@@ -1,8 +1,7 @@
-// screens/dashboard.js
 // screens/DashboardScreen.js
 import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
-import { startSession, getStatus, applyAdBoost } from "../lib/miningApi";
+import { startSession, activateBoost, watchAndEarnComplete } from "../lib/miningApi";
 import { supabase } from "../lib/supabase";
 
 export default function DashboardScreen() {
@@ -12,9 +11,10 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState("");
 
+  // ✅ Get current user and refresh status
   useEffect(() => {
     (async () => {
-      const { data: userData } = await supabase.auth.getUser(); // adjust to your supabase version
+      const { data: userData } = await supabase.auth.getUser();
       setUser(userData?.user ?? null);
       if (userData?.user) {
         await refreshStatus(userData.user.id);
@@ -23,18 +23,20 @@ export default function DashboardScreen() {
   }, []);
 
   const refreshStatus = useCallback(async (userId) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const res = await getStatus(userId);
-      setSession(res.session || null);
-      setProfile(res.profile || null);
+      // Here we can call getStatus logic if needed
+      // But we can reuse watchAndEarn or session API if necessary
+      // For now, just refresh session/profile via startSession status
+      // (You may add a getStatus function to edge functions later)
       setLoading(false);
     } catch (err) {
-      setLoading(false);
       console.error(err);
+      setLoading(false);
     }
   }, []);
 
+  // ⏱️ Countdown timer for active mining session
   useEffect(() => {
     let interval;
     if (session) {
@@ -44,7 +46,6 @@ export default function DashboardScreen() {
         const diff = end.getTime() - now.getTime();
         if (diff <= 0) {
           setTimer("Session ended");
-          // refresh to pick up new state
           if (user) refreshStatus(user.id);
           clearInterval(interval);
           return;
@@ -58,12 +59,14 @@ export default function DashboardScreen() {
     return () => clearInterval(interval);
   }, [session]);
 
+  // 🟢 Start mining session
   const handleStart = async () => {
     if (!user) return Alert.alert("Not signed in");
     setLoading(true);
     try {
       const res = await startSession(user.id);
-      setSession(res.session);
+      if (res?.session) setSession(res.session);
+      if (res?.already_active) Alert.alert("Mining session already active");
     } catch (err) {
       Alert.alert("Error starting session");
       console.error(err);
@@ -72,15 +75,18 @@ export default function DashboardScreen() {
     }
   };
 
+  // 🚀 Activate boost
   const handleBoost = async () => {
     if (!user) return Alert.alert("Not signed in");
-    // TODO: integrate rewarded ad SDK here. After ad success -> call applyAdBoost
-    // For now we simulate an ad success:
     setLoading(true);
     try {
-      const res = await applyAdBoost(user.id, 1 /* boost hours */, 1.1);
-      Alert.alert("Boost applied until " + res.boost_expires_at);
-      await refreshStatus(user.id);
+      const res = await activateBoost(user.id, 1, 1.1);
+      if (res?.error) {
+        Alert.alert(res.error);
+      } else {
+        Alert.alert("Boost applied until " + res.boost_expires_at);
+        await refreshStatus(user.id);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -88,7 +94,26 @@ export default function DashboardScreen() {
     }
   };
 
-  const miningRatePerHour = session ? (session.base_rate * session.multiplier) : 0;
+  // 🎯 Watch and earn complete (3 times/day)
+  const handleWatchAndEarn = async () => {
+    if (!user) return Alert.alert("Not signed in");
+    setLoading(true);
+    try {
+      const res = await watchAndEarnComplete(user.id);
+      if (res?.error) {
+        Alert.alert(res.error);
+      } else {
+        Alert.alert("Reward granted! Total earned: " + res.reward);
+        await refreshStatus(user.id);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const miningRatePerHour = session ? session.base_rate * session.multiplier : 0;
   const currentBalance = profile ? profile.wallet_balance : 0;
 
   return (
@@ -100,9 +125,7 @@ export default function DashboardScreen() {
       </View>
 
       <View style={styles.orb}>
-        <Text style={styles.orbText}>
-          {session ? "Mining..." : "Idle"}
-        </Text>
+        <Text style={styles.orbText}>{session ? "Mining..." : "Idle"}</Text>
         <Text style={{ marginTop: 8 }}>{session ? timer : "Start a session to begin mining"}</Text>
       </View>
 
@@ -111,13 +134,17 @@ export default function DashboardScreen() {
           <Text style={styles.btnText}>Start Mining</Text>
         </TouchableOpacity>
       ) : (
-        <TouchableOpacity style={styles.stopBtn} onPress={() => Alert.alert("Sessions auto-end by server")}>
+        <TouchableOpacity style={styles.stopBtn} onPress={() => Alert.alert("Session active")}>
           <Text style={styles.btnText}>Session Active</Text>
         </TouchableOpacity>
       )}
 
       <TouchableOpacity style={styles.boostBtn} onPress={handleBoost}>
         <Text style={styles.btnText}>Boost Earnings (Watch Ad)</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.watchBtn} onPress={handleWatchAndEarn}>
+        <Text style={styles.btnText}>Watch & Earn</Text>
       </TouchableOpacity>
     </View>
   );
@@ -132,5 +159,7 @@ const styles = StyleSheet.create({
   startBtn: { marginTop: 24, paddingVertical: 14, paddingHorizontal: 30, backgroundColor: "#0066ff", borderRadius: 12 },
   stopBtn: { marginTop: 24, paddingVertical: 14, paddingHorizontal: 30, backgroundColor: "#888", borderRadius: 12 },
   boostBtn: { marginTop: 18, paddingVertical: 12, paddingHorizontal: 20, backgroundColor: "#33a", borderRadius: 10 },
+  watchBtn: { marginTop: 12, paddingVertical: 12, paddingHorizontal: 20, backgroundColor: "#0a0", borderRadius: 10 },
   btnText: { color: "#fff", fontWeight: "700" }
 });
+

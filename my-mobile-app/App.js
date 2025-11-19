@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import Login from './screens/login'; // match exact filename
-import Dashboard from './screens/DashboardScreen'; // match exact filename
+import Login from './screens/LoginScreen';
+import Dashboard from './screens/DashboardScreen';
 import { supabase } from './lib/supabase';
 
 const Stack = createNativeStackNavigator();

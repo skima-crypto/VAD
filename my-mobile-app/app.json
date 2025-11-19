@@ -2,7 +2,11 @@
   "expo": {
     "name": "MyMobileApp",
     "slug": "my-mobile-app",
-    "platforms": ["ios", "android" , "web"],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -22,6 +26,11 @@
     },
     "android": {
       "package": "com.example.mymobileapp"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "01e6250a-1ffa-4f6d-839c-940a486d0f3c"
+      }
     }
   }
 }

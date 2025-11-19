@@ -22,19 +22,20 @@ export default function DashboardScreen() {
     })();
   }, []);
 
-  const refreshStatus = useCallback(async (userId) => {
-    setLoading(true);
-    try {
-      // Here we can call getStatus logic if needed
-      // But we can reuse watchAndEarn or session API if necessary
-      // For now, just refresh session/profile via startSession status
-      // (You may add a getStatus function to edge functions later)
-      setLoading(false);
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-    }
-  }, []);
+ const refreshStatus = useCallback(async (userId) => {
+  setLoading(true);
+  try {
+    const res = await fetch(`${FUNCTION_URL}/getStatus?user_id=${userId}`);
+    const data = await res.json();
+    setSession(data.session || null);
+    setProfile(data.profile || null);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+}, []);
+
 
   // ⏱️ Countdown timer for active mining session
   useEffect(() => {

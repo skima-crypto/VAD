@@ -2,19 +2,21 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.1";
 
-// Read env (Supabase Edge provides these at runtime)
+// Env
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
 const SESSION_DURATION_HOURS = 8;
 
+// Helper: YYYY-MM-DD
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-async function startMine(user_id: string) {
+async function startMine(user_id: string, adWatched: boolean) {
   if (!user_id) throw new Error("user_id required");
+  if (!adWatched) throw new Error("Must watch rewarded ad to start mining");
 
   // 1️⃣ Check active session
   const { data: existing } = await admin
@@ -38,7 +40,10 @@ async function startMine(user_id: string) {
 
   const now = new Date();
   const endAt = new Date(settings.end_at);
-  const remainingHours = Math.max(1, Math.ceil((endAt.getTime() - now.getTime()) / (1000 * 3600)));
+  const remainingHours = Math.max(
+    1,
+    Math.ceil((endAt.getTime() - now.getTime()) / (1000 * 3600))
+  );
   const remainingSupply = Number(settings.total_supply) - Number(settings.supply_distributed);
 
   // 3️⃣ Count active users
@@ -88,7 +93,9 @@ serve(async (req) => {
 
     const body = await req.json();
     const user_id = body?.user_id;
-    const result = await startMine(user_id);
+    const adWatched = body?.adWatched ?? false; // ✅ client must send this flag
+
+    const result = await startMine(user_id, adWatched);
 
     return new Response(JSON.stringify(result), { status: 200 });
   } catch (err: any) {

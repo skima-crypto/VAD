@@ -1,8 +1,8 @@
-// screens/DashboardScreen.js
 import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import { startSession, activateBoost, watchAndEarnComplete } from "../lib/miningApi";
 import { supabase } from "../lib/supabase";
+import { AdMobInterstitial } from 'expo-ads-admob';  // Import AdMob for ads
 
 export default function DashboardScreen() {
   const [user, setUser] = useState(null);
@@ -10,8 +10,10 @@ export default function DashboardScreen() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState("");
+  const [boostsUsed, setBoostsUsed] = useState(0);  // Track boosts used today
+  const [watchCount, setWatchCount] = useState(0);  // Track watch ads count today
 
-  // ✅ Get current user and refresh status
+  // Get current user and refresh status
   useEffect(() => {
     (async () => {
       const { data: userData } = await supabase.auth.getUser();
@@ -22,7 +24,6 @@ export default function DashboardScreen() {
     })();
   }, []);
 
-  // 🔄 Refresh session and profile
   const refreshStatus = useCallback(async (userId) => {
     setLoading(true);
     try {
@@ -30,6 +31,8 @@ export default function DashboardScreen() {
       const data = await res.json();
       setSession(data.session || null);
       setProfile(data.profile || null);
+      setBoostsUsed(data.profile?.boosts_used_today || 0);
+      setWatchCount(data.profile?.daily_watched_ads || 0);
     } catch (err) {
       console.error(err);
     } finally {
@@ -37,7 +40,7 @@ export default function DashboardScreen() {
     }
   }, []);
 
-  // ⏱️ Countdown timer for active mining session
+  // Countdown timer for active mining session
   useEffect(() => {
     let interval;
     if (session) {
@@ -60,7 +63,22 @@ export default function DashboardScreen() {
     return () => clearInterval(interval);
   }, [session]);
 
-  // 🟢 Start mining session
+  // Show Ad before starting mining session
+  const showAdBeforeStartMining = async () => {
+    try {
+      await AdMobInterstitial.setAdUnitID("ca-app-pub-3940256099942544/6300978111");  // Test Ad Unit ID
+      await AdMobInterstitial.requestAdAsync();
+      await AdMobInterstitial.showAdAsync();
+      // After ad completes, start the mining session
+      await handleStart();
+    } catch (error) {
+      console.error("Ad error: ", error);
+      // Proceed without ad if fails
+      await handleStart();
+    }
+  };
+
+  // Start mining session
   const handleStart = async () => {
     if (!user) return Alert.alert("Not signed in");
     setLoading(true);
@@ -76,7 +94,22 @@ export default function DashboardScreen() {
     }
   };
 
-  // 🚀 Activate boost
+  // Show Ad before boost activation
+  const showAdBeforeBoost = async () => {
+    try {
+      await AdMobInterstitial.setAdUnitID("ca-app-pub-3940256099942544/6300978111");  // Test Ad Unit ID
+      await AdMobInterstitial.requestAdAsync();
+      await AdMobInterstitial.showAdAsync();
+      // After ad completes, activate the boost
+      await handleBoost();
+    } catch (error) {
+      console.error("Ad error: ", error);
+      // Proceed with boost activation if ad fails
+      await handleBoost();
+    }
+  };
+
+  // Boost activation handler
   const handleBoost = async () => {
     if (!user) return Alert.alert("Not signed in");
     setLoading(true);
@@ -95,17 +128,31 @@ export default function DashboardScreen() {
     }
   };
 
-  // 🎯 Watch and earn (3x/day)
+  // Show Ad before earning reward
+  const showAdBeforeEarn = async () => {
+    try {
+      await AdMobInterstitial.setAdUnitID("ca-app-pub-3940256099942544/6300978111");  // Test Ad Unit ID
+      await AdMobInterstitial.requestAdAsync();
+      await AdMobInterstitial.showAdAsync();
+      // After ad completes, grant the reward
+      await handleWatchAndEarn();
+    } catch (error) {
+      console.error("Ad error: ", error);
+      await handleWatchAndEarn();  // Proceed with reward even if ad fails
+    }
+  };
+
+  // Watch & Earn handler function
   const handleWatchAndEarn = async () => {
     if (!user) return Alert.alert("Not signed in");
     setLoading(true);
     try {
-      const res = await watchAndEarnComplete(user.id);
+      const res = await watchAndEarnComplete(user.id); // API call to complete watch & earn
       if (res?.error) {
         Alert.alert(res.error);
       } else {
         Alert.alert("Reward granted! Total earned: " + res.reward);
-        await refreshStatus(user.id);
+        await refreshStatus(user.id);  // Refresh the status after reward is granted
       }
     } catch (err) {
       console.error(err);
@@ -116,8 +163,6 @@ export default function DashboardScreen() {
 
   const miningRatePerHour = session ? session.base_rate * session.multiplier : 0;
   const currentBalance = profile ? profile.wallet_balance : 0;
-  const boostsUsed = profile?.boosts_used_today || 0;
-  const watchCount = profile?.ads_watched_today || 0; // make sure your Edge function returns this
 
   return (
     <View style={styles.container}>
@@ -134,7 +179,7 @@ export default function DashboardScreen() {
       </View>
 
       {!session ? (
-        <TouchableOpacity style={styles.startBtn} onPress={handleStart} disabled={loading}>
+        <TouchableOpacity style={styles.startBtn} onPress={showAdBeforeStartMining} disabled={loading}>
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Start Mining</Text>}
         </TouchableOpacity>
       ) : (
@@ -145,7 +190,7 @@ export default function DashboardScreen() {
 
       <TouchableOpacity
         style={styles.boostBtn}
-        onPress={handleBoost}
+        onPress={showAdBeforeBoost}
         disabled={loading || boostsUsed >= 3}
       >
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Boost Earnings ({boostsUsed}/3)</Text>}
@@ -153,7 +198,7 @@ export default function DashboardScreen() {
 
       <TouchableOpacity
         style={styles.watchBtn}
-        onPress={handleWatchAndEarn}
+        onPress={showAdBeforeEarn}
         disabled={loading || watchCount >= 3}
       >
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Watch & Earn ({watchCount}/3)</Text>}

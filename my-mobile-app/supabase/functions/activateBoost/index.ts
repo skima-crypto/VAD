@@ -1,4 +1,3 @@
-// supabase/functions/activateBoost/index.ts
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.1";
 
@@ -88,7 +87,7 @@ async function activateBoost(
     ad_type: "rewarded",
     multiplier_applied: multiplier,
     new_multiplier: newMultiplier,
-    ad_watched: true,
+    ad_watched: true,  // Log that the ad was watched for the boost
     weight: 0,
     reward: 0,
   });
@@ -116,6 +115,16 @@ serve(async (req) => {
     const user_id = body?.user_id;
     const boost_hours = body?.boost_hours ?? BOOST_HOURS_DEFAULT;
     const multiplier = body?.multiplier ?? 1.1;
+
+    // Placeholder to simulate Ad watching (replace with actual AdMob logic later)
+    const adWatched = body?.ad_watched;
+
+    if (!adWatched) {
+      return new Response(
+        JSON.stringify({ error: "User must watch an ad before boosting" }),
+        { status: 400 }
+      );
+    }
 
     const result = await activateBoost(user_id, boost_hours, multiplier);
 

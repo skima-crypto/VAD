@@ -1,4 +1,3 @@
-// supabase/functions/watchAndEarnComplete/index.ts
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.1";
 
@@ -19,7 +18,10 @@ function todayISODate() {
 // Reset daily watch counter if needed
 async function resetDailyWatchIfNeeded(profile: any, user_id: string) {
   const today = todayISODate();
-  const lastReset = profile?.last_watch_reset ? String(profile.last_watch_reset).slice(0, 10) : null;
+  const lastReset = profile?.last_watch_reset
+    ? String(profile.last_watch_reset).slice(0, 10)
+    : null;
+
   if (lastReset !== today) {
     await admin
       .from("profiles")
@@ -30,8 +32,13 @@ async function resetDailyWatchIfNeeded(profile: any, user_id: string) {
 }
 
 // Core: watch and earn
-async function watchAndEarn(user_id: string) {
+async function watchAndEarn(user_id: string, ad_watched: boolean) {
   if (!user_id) throw new Error("user_id required");
+
+  // Check if the ad was watched
+  if (!ad_watched) {
+    return { error: "User must watch an ad to earn rewards", status: 400 };
+  }
 
   // Fetch profile
   const { data: profile } = await admin
@@ -81,16 +88,26 @@ async function watchAndEarn(user_id: string) {
 serve(async (req) => {
   try {
     if (req.method !== "POST") {
-      return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
+      return new Response(
+        JSON.stringify({ error: "Method not allowed" }),
+        { status: 405 }
+      );
     }
 
     const body = await req.json();
     const user_id = body?.user_id;
+    const ad_watched = body?.ad_watched;  // Ad watched flag from the app
 
-    const result = await watchAndEarn(user_id);
+    // Ensure ad is watched before granting reward
+    const result = await watchAndEarn(user_id, ad_watched);
 
-    return new Response(JSON.stringify(result), { status: result?.status === 403 ? 403 : 200 });
+    return new Response(JSON.stringify(result), {
+      status: result?.status === 403 ? 403 : 200,
+    });
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err?.message ?? String(err) }), { status: 500 });
+    return new Response(
+      JSON.stringify({ error: err?.message ?? String(err) }),
+      { status: 500 }
+    );
   }
 });

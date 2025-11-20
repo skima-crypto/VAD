@@ -22,10 +22,16 @@
       "**/*"
     ],
     "ios": {
-      "bundleIdentifier": "com.example.mymobileapp"
+      "bundleIdentifier": "com.example.mymobileapp",
+      "config": {
+        "googleMobileAdsAppId": "ca-app-pub-3940256099942544~1458002511"
+      }
     },
     "android": {
-      "package": "com.example.mymobileapp"
+      "package": "com.example.mymobileapp",
+      "config": {
+        "googleMobileAdsAppId": "ca-app-pub-3940256099942544~3347511713"
+      }
     },
     "extra": {
       "eas": {
@@ -34,3 +40,4 @@
     }
   }
 }
+

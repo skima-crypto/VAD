@@ -12,33 +12,24 @@ export default {
       resizeMode: "contain",
       backgroundColor: "#ffffff",
     },
-    assetBundlePatterns: ["**/*"],
-
-    ios: {
-      bundleIdentifier: "com.mine.vadapp",
-      config: {
-        googleMobileAdsAppId: process.env.IOS_ADMOB_APP_ID, // EAS env variable
-      },
-    },
-    android: {
-      package: "com.mine.vadapp",
-      config: {
-        googleMobileAdsAppId: process.env.ANDROID_ADMOB_APP_ID, // EAS env variable
-      },
-    },
-
+    platforms: ["ios", "android", "web"],
+    
     plugins: [
-      "react-native-google-mobile-ads", // Needed if using this package
+      [
+        "expo-ads-admob",
+        {
+          androidAppId: process.env.ANDROID_ADMOB_APP_ID,
+          iosAppId: process.env.IOS_ADMOB_APP_ID,
+        },
+      ],
     ],
 
     extra: {
       SUPABASE_URL: process.env.SUPABASE_URL,
       SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
       SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-
-      eas: {
-        projectId: "01e6250a-1ffa-4f6d-839c-940a486d0f3c",
-      },
+      eas: { projectId: "01e6250a-1ffa-4f6d-839c-940a486d0f3c" },
     },
   },
 };
+

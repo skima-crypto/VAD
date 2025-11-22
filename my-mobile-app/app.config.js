@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import "dotenv/config";
 
 export default {
   expo: {
@@ -7,21 +7,23 @@ export default {
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
+
     splash: {
       image: "./assets/splash-icon.png",
       resizeMode: "contain",
       backgroundColor: "#ffffff",
     },
+
     platforms: ["ios", "android", "web"],
-    
+
     plugins: [
       [
-        "expo-ads-admob",
+        "react-native-google-mobile-ads",
         {
-          androidAppId: process.env.ANDROID_ADMOB_APP_ID,
-          iosAppId: process.env.IOS_ADMOB_APP_ID,
-        },
-      ],
+          android_app_id: process.env.ANDROID_ADMOB_APP_ID,
+          ios_app_id: process.env.IOS_ADMOB_APP_ID,
+        }
+      ]
     ],
 
     extra: {
@@ -32,4 +34,3 @@ export default {
     },
   },
 };
-

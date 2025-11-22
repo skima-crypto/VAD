@@ -2,7 +2,16 @@ import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import { startSession, activateBoost, watchAndEarnComplete } from "../lib/miningApi";
 import { supabase } from "../lib/supabase";
-import { InterstitialAd, AdEventType, RewardedAd, RewardedAdEventType } from 'react-native-google-mobile-ads';  // Updated import for the new library
+import { InterstitialAd, RewardedAd, AdEventType } from "react-native-google-mobile-ads";
+
+// ----------------------------
+// Test Ad Units (Expo + Android)
+// ----------------------------
+const INTERSTITIAL_AD_UNIT = "ca-app-pub-3940256099942544/1033173712";
+const REWARDED_AD_UNIT = "ca-app-pub-3940256099942544/5224354917";
+
+const interstitialAd = InterstitialAd.createForAdRequest(INTERSTITIAL_AD_UNIT);
+const rewardedAd = RewardedAd.createForAdRequest(REWARDED_AD_UNIT);
 
 export default function DashboardScreen() {
   const [user, setUser] = useState(null);
@@ -10,23 +19,17 @@ export default function DashboardScreen() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState("");
-  const [boostsUsed, setBoostsUsed] = useState(0);  // Track boosts used today
-  const [watchCount, setWatchCount] = useState(0);  // Track watch ads count today
+  const [boostsUsed, setBoostsUsed] = useState(0);
+  const [watchCount, setWatchCount] = useState(0);
 
-  // AdMob Interstitial Ad Setup
-  const interstitialAd = InterstitialAd.createForAdRequest('ca-app-pub-3940256099942544/6300978111'); // Replace with your actual ad unit ID
-  
-  // Rewarded Ad Setup
-  const rewardedAd = RewardedAd.createForAdRequest('ca-app-pub-3940256099942544/6300978111'); // Replace with your actual ad unit ID
-
-  // Get current user and refresh status
+  // ----------------------------
+  // Fetch current user & status
+  // ----------------------------
   useEffect(() => {
     (async () => {
       const { data: userData } = await supabase.auth.getUser();
       setUser(userData?.user ?? null);
-      if (userData?.user) {
-        await refreshStatus(userData.user.id);
-      }
+      if (userData?.user) await refreshStatus(userData.user.id);
     })();
   }, []);
 
@@ -46,7 +49,9 @@ export default function DashboardScreen() {
     }
   }, []);
 
-  // Countdown timer for active mining session
+  // ----------------------------
+  // Countdown Timer
+  // ----------------------------
   useEffect(() => {
     let interval;
     if (session) {
@@ -69,30 +74,44 @@ export default function DashboardScreen() {
     return () => clearInterval(interval);
   }, [session]);
 
-  // Show Ad before starting mining session
-  const showAdBeforeStartMining = async () => {
-    try {
-      await interstitialAd.load();
-      interstitialAd.onAdEvent((type) => {
-        if (type === AdEventType.LOADED) {
-          interstitialAd.show();
-        } else if (type === AdEventType.ERROR) {
-          console.error("Ad error: ", type);
-          // Proceed without ad if fails
-          handleStart();
-        } else if (type === AdEventType.CLOSED) {
-          // After ad completes, start the mining session
-          handleStart();
-        }
-      });
-    } catch (error) {
-      console.error("Ad error: ", error);
-      // Proceed without ad if fails
-      handleStart();
-    }
+  // ----------------------------
+  // Helper: Show Interstitial
+  // ----------------------------
+  const showInterstitial = (callback) => {
+    const loadedListener = interstitialAd.addAdEventListener(AdEventType.LOADED, () => interstitialAd.show());
+    const closedListener = interstitialAd.addAdEventListener(AdEventType.CLOSED, () => {
+      callback();
+      interstitialAd.load(); // reload for next use
+      loadedListener();
+      closedListener();
+    });
+    const errorListener = interstitialAd.addAdEventListener(AdEventType.ERROR, () => {
+      callback(); // proceed if ad fails
+      loadedListener();
+      closedListener();
+      errorListener();
+    });
+    interstitialAd.load();
   };
 
-  // Start mining session
+  // ----------------------------
+  // Helper: Show Rewarded
+  // ----------------------------
+  const showRewarded = (callback) => {
+    const loadedListener = rewardedAd.addAdEventListener(AdEventType.LOADED, () => rewardedAd.show());
+    const earnedListener = rewardedAd.addAdEventListener(AdEventType.EARNED_REWARD, () => callback());
+    const closedListener = rewardedAd.addAdEventListener(AdEventType.CLOSED, () => {
+      rewardedAd.load(); // reload for next use
+      loadedListener();
+      earnedListener();
+      closedListener();
+    });
+    rewardedAd.load();
+  };
+
+  // ----------------------------
+  // Mining Session
+  // ----------------------------
   const handleStart = async () => {
     if (!user) return Alert.alert("Not signed in");
     setLoading(true);
@@ -108,38 +127,18 @@ export default function DashboardScreen() {
     }
   };
 
-  // Show Ad before boost activation
-  const showAdBeforeBoost = async () => {
-    try {
-      await interstitialAd.load();
-      interstitialAd.onAdEvent((type) => {
-        if (type === AdEventType.LOADED) {
-          interstitialAd.show();
-        } else if (type === AdEventType.ERROR) {
-          console.error("Ad error: ", type);
-          // Proceed with boost activation if ad fails
-          handleBoost();
-        } else if (type === AdEventType.CLOSED) {
-          // After ad completes, activate the boost
-          handleBoost();
-        }
-      });
-    } catch (error) {
-      console.error("Ad error: ", error);
-      // Proceed with boost activation if ad fails
-      handleBoost();
-    }
-  };
+  const showAdBeforeStartMining = () => showInterstitial(handleStart);
 
-  // Boost activation handler
+  // ----------------------------
+  // Boost Activation
+  // ----------------------------
   const handleBoost = async () => {
     if (!user) return Alert.alert("Not signed in");
     setLoading(true);
     try {
       const res = await activateBoost(user.id, 1, 1.1);
-      if (res?.error) {
-        Alert.alert(res.error);
-      } else {
+      if (res?.error) Alert.alert(res.error);
+      else {
         Alert.alert("Boost applied until " + res.boost_expires_at);
         await refreshStatus(user.id);
       }
@@ -150,39 +149,20 @@ export default function DashboardScreen() {
     }
   };
 
-  // Show Ad before earning reward
-  const showAdBeforeEarn = async () => {
-    try {
-      await rewardedAd.load();
-      rewardedAd.onAdEvent((type) => {
-        if (type === RewardedAdEventType.LOADED) {
-          rewardedAd.show();
-        } else if (type === RewardedAdEventType.ERROR) {
-          console.error("Ad error: ", type);
-          // Proceed with reward even if ad fails
-          handleWatchAndEarn();
-        } else if (type === RewardedAdEventType.CLOSED) {
-          // After ad completes, grant the reward
-          handleWatchAndEarn();
-        }
-      });
-    } catch (error) {
-      console.error("Ad error: ", error);
-      handleWatchAndEarn();  // Proceed with reward even if ad fails
-    }
-  };
+  const showAdBeforeBoost = () => showInterstitial(handleBoost);
 
-  // Watch & Earn handler function
+  // ----------------------------
+  // Watch & Earn
+  // ----------------------------
   const handleWatchAndEarn = async () => {
     if (!user) return Alert.alert("Not signed in");
     setLoading(true);
     try {
-      const res = await watchAndEarnComplete(user.id); // API call to complete watch & earn
-      if (res?.error) {
-        Alert.alert(res.error);
-      } else {
+      const res = await watchAndEarnComplete(user.id);
+      if (res?.error) Alert.alert(res.error);
+      else {
         Alert.alert("Reward granted! Total earned: " + res.reward);
-        await refreshStatus(user.id);  // Refresh the status after reward is granted
+        await refreshStatus(user.id);
       }
     } catch (err) {
       console.error(err);
@@ -191,9 +171,17 @@ export default function DashboardScreen() {
     }
   };
 
+  const showAdBeforeEarn = () => showRewarded(handleWatchAndEarn);
+
+  // ----------------------------
+  // UI Values
+  // ----------------------------
   const miningRatePerHour = session ? session.base_rate * session.multiplier : 0;
   const currentBalance = profile ? profile.wallet_balance : 0;
 
+  // ----------------------------
+  // Render
+  // ----------------------------
   return (
     <View style={styles.container}>
       <Text style={styles.header}>VAD Mining</Text>
@@ -218,7 +206,7 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       )}
 
-           <TouchableOpacity
+      <TouchableOpacity
         style={styles.boostBtn}
         onPress={showAdBeforeBoost}
         disabled={loading || boostsUsed >= 3}
@@ -237,6 +225,9 @@ export default function DashboardScreen() {
   );
 }
 
+// ----------------------------
+// Styles
+// ----------------------------
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: "center", padding: 20 },
   header: { fontSize: 22, fontWeight: "700", marginTop: 20 },

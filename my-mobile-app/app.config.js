@@ -8,7 +8,7 @@ export default {
     orientation: "portrait",
 
     cli: {
-      appVersionSource: "remote",   // <--- Fixes the warning
+      appVersionSource: "remote",
     },
 
     icon: "./assets/icon.png",
@@ -21,16 +21,13 @@ export default {
 
     ios: {
       bundleIdentifier: "com.mine.vadapp",
-      config: {
-        googleMobileAdsAppId: process.env.IOS_ADMOB_APP_ID,
-      },
+      // Remove config.googleMobileAdsAppId
     },
+
     android: {
       package: "com.mine.vadapp",
       versionCode: 1,
-      config: {
-        googleMobileAdsAppId: process.env.ANDROID_ADMOB_APP_ID,
-      },
+      // Remove config.googleMobileAdsAppId
     },
 
     plugins: ["react-native-google-mobile-ads"],

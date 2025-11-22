@@ -15,7 +15,16 @@ export default {
     assetBundlePatterns: ["**/*"],
 
     android: {
-      package: "com.mine.vadapp"    // ✅ New Android package name
+      package: "com.mine.vadapp",    // ✅ New Android package name
+      config: {
+        googleMobileAdsAppId: "ca-app-pub-3940256099942544~3347511713", // Add your actual AdMob App ID
+      },
+    },
+    ios: {
+      bundleIdentifier: "com.mine.vadapp", // Change to your actual iOS bundle ID
+      config: {
+        googleMobileAdsAppId: "ca-app-pub-3940256099942544~1458002511", // Add your actual AdMob App ID
+      },
     },
 
     extra: {
@@ -26,6 +35,10 @@ export default {
       eas: {
         projectId: "01e6250a-1ffa-4f6d-839c-940a486d0f3c"  // ✔ Your EAS project ID
       }
-    }
+    },
+
+    plugins: [
+      "react-native-google-mobile-ads"  // Make sure you added the plugin correctly
+    ],
   }
 };

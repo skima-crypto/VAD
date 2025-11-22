@@ -16,20 +16,19 @@ export default {
 
     ios: {
       bundleIdentifier: "com.mine.vadapp",
+      config: {
+        googleMobileAdsAppId: process.env.IOS_ADMOB_APP_ID, // EAS env variable
+      },
     },
     android: {
       package: "com.mine.vadapp",
+      config: {
+        googleMobileAdsAppId: process.env.ANDROID_ADMOB_APP_ID, // EAS env variable
+      },
     },
 
     plugins: [
-      [
-        "expo-ads-admob",
-        {
-          androidAppId: "ca-app-pub-3940256099942544~3347511713", // Test AdMob ID
-          iosAppId: "ca-app-pub-3940256099942544~1458002511",     // Test AdMob ID
-        },
-      ],
-      "react-native-google-mobile-ads", // Only needed if you use this package
+      "react-native-google-mobile-ads", // Needed if using this package
     ],
 
     extra: {

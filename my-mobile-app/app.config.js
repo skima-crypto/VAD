@@ -21,13 +21,28 @@ export default {
 
     ios: {
       bundleIdentifier: "com.mine.vadapp",
-      // Remove config.googleMobileAdsAppId
+      // iOS does not require permission declarations like Android
+      infoPlist: {
+        NSCameraUsageDescription: "This app requires camera access to take photos.",
+        NSMicrophoneUsageDescription: "This app requires microphone access to record audio.",
+        NSPhotoLibraryUsageDescription: "This app requires photo library access to store media.",
+      },
     },
 
     android: {
       package: "com.mine.vadapp",
       versionCode: 1,
-      // Remove config.googleMobileAdsAppId
+      permissions: [
+        "INTERNET",
+        "CAMERA",               // Camera access
+        "RECORD_AUDIO",         // Microphone access
+        "READ_EXTERNAL_STORAGE", // Read storage access
+        "WRITE_EXTERNAL_STORAGE", // Write storage access
+        "ACCESS_FINE_LOCATION",  // Location access
+        "ACCESS_COARSE_LOCATION", // Coarse location access
+        "VIBRATE",              // Vibration access (useful for feedback)
+        "FOREGROUND_SERVICE",   // For background services
+      ],
     },
 
     plugins: ["react-native-google-mobile-ads"],
